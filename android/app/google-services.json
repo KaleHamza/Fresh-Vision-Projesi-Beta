@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "102058626626",
+    "project_id": "meyvemodeli",
+    "storage_bucket": "meyvemodeli.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:102058626626:android:226845c5a2de0d0132e7db",
+        "android_client_info": {
+          "package_name": "com.example.meyve_tani"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCjoql7WCo88lL2Nj_LVT81YAm8QnOcQ5s"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
