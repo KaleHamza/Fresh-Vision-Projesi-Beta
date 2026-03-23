@@ -1,7 +1,9 @@
-import 'dart:io';
+/*import 'dart:io';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
+
+// Kamera görüntüsünü AI a yönlendiren servis
 class AnalizService {
   final String apiUrl = 'http://192.168.1.3:5000/predict';
 
@@ -11,7 +13,7 @@ class AnalizService {
       var request = http.MultipartRequest('POST', Uri.parse(apiUrl));
       request.files.add(await http.MultipartFile.fromPath('file', resim.path));
       
-      var response = await request.send();
+      var response = await request.send();//Cevabı
       if (response.statusCode == 200) {
         var responseData = await response.stream.bytesToString();
         return json.decode(responseData);
@@ -21,4 +23,4 @@ class AnalizService {
     }
     return null;
   }
-}
+}*/

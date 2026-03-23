@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../services/api_service.dart';
+import '../services/local_model_service.dart';
 import '../utils/fruit_helpers.dart';
 
 class TaramaSayfasi extends StatefulWidget {
@@ -15,12 +15,12 @@ class TaramaSayfasi extends StatefulWidget {
 
 class _TaramaSayfasiState extends State<TaramaSayfasi> {
   String _kullaniciAdi = "Şef"; 
-  String _unvan = "Meyve Dedektifi 🕵️‍♂️";
+  final String _unvan = "Meyve Dedektifi 🕵️‍♂️";
   File? _secilenResim;
   bool _yukleniyor = false;
   Map<String, dynamic>? _sonuc;
   
-  final ApiService _apiService = ApiService();
+  final LocalModelService _modelService = LocalModelService();
   final ImagePicker _picker = ImagePicker();
 
   // Animasyon Değişkenleri
@@ -30,6 +30,30 @@ class _TaramaSayfasiState extends State<TaramaSayfasi> {
     "Vitaminler sayılıyor... 🍊", "Kabuk analizi yapılıyor... 🔍",
     "Yapay zeka düşünüyor... 🤖", "Tazelik kontrolü sürüyor... ⏳"
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeModel();
+  }
+
+  @override
+  void dispose() {
+    _zamanlayici?.cancel();
+    _modelService.dispose();
+    super.dispose();
+  }
+
+  Future<void> _initializeModel() async {
+    try {
+      await _modelService.loadModel();
+      print("✅ Model başarıyla yüklendi!");
+    } catch (e) {
+      if (mounted) {
+        _mesajGoster("Model yükleme hatası: $e", hata: true);
+      }
+    }
+  }
 
   // --- UI Yardımcıları ---
   void _mesajGoster(String mesaj, {bool hata = false}) {
@@ -75,7 +99,7 @@ class _TaramaSayfasiState extends State<TaramaSayfasi> {
     });
 
     try {
-      final sonuc = await _apiService.meyveAnalizEt(resim);
+      final sonuc = await _modelService.meyveAnalizEt(resim);
       setState(() { _sonuc = sonuc; });
     } catch (e) {
       _mesajGoster(e.toString(), hata: true);
@@ -85,24 +109,39 @@ class _TaramaSayfasiState extends State<TaramaSayfasi> {
     }
   }
 
-  void _firebaseKaydet() {
+  Future<void> _firebaseKaydet() async {
     if (_sonuc == null || _sonuc!['success'] == false) return;
+    
+    setState(() { _yukleniyor = true; });
     
     String meyveAdi = _sonuc!['fruit'];
     DateTime eklenme = DateTime.now();
     DateTime sonKullanma = eklenme.add(Duration(days: (_sonuc!['days_left'] as num).round()));
 
-    FirebaseFirestore.instance.collection('buzdolabim').add({
-      'meyveAdi': meyveAdi,
-      'eklenmeTarihi': eklenme,
-      'tahminiOmur': _sonuc!['days_left'],
-      'sonKullanmaTarihi': sonKullanma,
-      'durum': _sonuc!['status'],
-      'saglikPuani': _sonuc!['health_score']
-    }).then((_) {
-      _mesajGoster('$meyveAdi eklendi! 🍎');
-      setState(() { _sonuc = null; _secilenResim = null; });
-    });
+    try {
+      await FirebaseFirestore.instance.collection('buzdolabim').add({
+        'meyveAdi': meyveAdi,
+        'eklenmeTarihi': eklenme,
+        'tahminiOmur': _sonuc!['days_left'],
+        'sonKullanmaTarihi': sonKullanma,
+        'durum': _sonuc!['status'],
+        'saglikPuani': _sonuc!['health_score']
+      });
+      
+      if (mounted) {
+        _mesajGoster('$meyveAdi eklendi! 🍎');
+        setState(() { 
+          _sonuc = null; 
+          _secilenResim = null;
+          _yukleniyor = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        _mesajGoster('Kayıt hatası: $e', hata: true);
+        setState(() { _yukleniyor = false; });
+      }
+    }
   }
 
   @override
@@ -204,8 +243,20 @@ class _TaramaSayfasiState extends State<TaramaSayfasi> {
   }
 
   Widget _buildResultCard() {
-    if (_sonuc!['fruit'] == null || _sonuc!['fruit'] == 'Bilinmiyor') {
-      return const Card(color: Colors.redAccent, child: Padding(padding: EdgeInsets.all(10), child: Text("Tanımlanamadı", style: TextStyle(color: Colors.white))));
+    if (_sonuc == null || _sonuc!['success'] == false) {
+      return Card(
+        color: Colors.redAccent,
+        child: Padding(
+          padding: const EdgeInsets.all(15),
+          child: Column(
+            children: [
+              const Text("❌ Tanımlanamadı", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              Text(_sonuc?['message'] ?? 'Bilinmeyen hata', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+            ],
+          ),
+        ),
+      );
     }
     
     return Column(
@@ -220,17 +271,34 @@ class _TaramaSayfasiState extends State<TaramaSayfasi> {
                 Text(_sonuc!['status'], style: TextStyle(fontSize: 18, color: _sonuc!['status'] == 'TAZE' ? Colors.green : Colors.orange)),
                 const Divider(),
                 Text("İpucu: ${FruitHelpers.ipucuGetir(_sonuc!['fruit'])}"),
+                const SizedBox(height: 10),
+                Text("Güven: %${(_sonuc!['confidence'] * 100).toStringAsFixed(1)}", style: const TextStyle(color: Colors.grey, fontSize: 12)),
               ],
             ),
           ),
         ),
         const SizedBox(height: 10),
-        ElevatedButton.icon(
-          onPressed: _firebaseKaydet, 
-          icon: const Icon(Icons.save), 
-          label: const Text("Kaydet"),
-          style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 50), backgroundColor: Colors.orange, foregroundColor: Colors.white),
-        )
+        if (_yukleniyor)
+          const SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: ElevatedButton(
+              onPressed: null,
+              style: ButtonStyle(backgroundColor: WidgetStatePropertyAll(Colors.orange)),
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+              ),
+            ),
+          )
+        else
+          ElevatedButton.icon(
+            onPressed: _firebaseKaydet, 
+            icon: const Icon(Icons.save), 
+            label: const Text("Kaydet"),
+            style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 50), backgroundColor: Colors.orange, foregroundColor: Colors.white),
+          )
       ],
     );
   }

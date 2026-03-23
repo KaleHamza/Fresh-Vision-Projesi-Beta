@@ -1,0 +1,18 @@
+<resources>
+    <string name="app_name">Freshness Detection</string>
+    <string name="title_home">Identification</string>
+    <string name="title_dashboard">Recent Searches</string>
+    <string name="title_notifications">Settings</string>
+    <string name="instraction">Instraction</string>
+    <string name="about_us">About Us</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="team_information">TEAM INFORMATION</string>
+  <string name="classified_as">Classified as:</string>
+  <string name="take_picture">Take Picture</string>
+  <string name="confidence_table">Confidence:</string>
+    <string name="email_nuruzzaman15_14546_diu_edu_bd"><strong>Email:</strong> nuruzzaman15–14546@diu.edu.bd</string>
+  <string name="from_gallery">From Gallery</string>
+    <string name="email_tishun15_14569_diu_edu_bd">Email: tishun15–14569@diu.edu.bd</string>
+    <string name="id_203_15_14569">ID: 203–15–14569</string>
+</resources>
